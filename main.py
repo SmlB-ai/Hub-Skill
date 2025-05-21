@@ -1,54 +1,39 @@
 from PyQt6.QtWidgets import QApplication
+from PyQt6.QtGui import QIcon
 from ui.main_window import MainWindow
 from estilo.estilo import obtener_estilos
-
-import sys
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    app.setStyleSheet(obtener_estilos())  # Aplica los estilos a toda la aplicación
-
-    ventana = MainWindow()  # Creamos la ventana principal
-    ventana.show()  # Mostramos la ventana
-    sys.exit(app.exec())
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtGui import QIcon, QFontDatabase
-from ui.main_window import MainWindow
-from estilo.estilo import obtener_estilos
+from utils.dependency_checker import check_dependencies
 
 import sys
 import os
 
-# Aseguramos que Pillow esté instalado para el módulo de reescalado
-try:
-    from PIL import Image
-except ImportError:
-    print("La biblioteca Pillow no está instalada. Instalándola...")
-    import subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "Pillow"])
-    print("Pillow instalado correctamente.")
-    from PIL import Image
-
-# Aseguramos que qrcode esté instalado para el módulo de códigos QR
-try:
-    import qrcode
-except ImportError:
-    print("La biblioteca qrcode no está instalada. Instalándola...")
-    import subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "qrcode[pil]"])
-    print("qrcode instalado correctamente.")
-    import qrcode
-
-if __name__ == "__main__":
+def setup_application():
+    """Configura la aplicación principal"""
     app = QApplication(sys.argv)
-    app.setStyleSheet(obtener_estilos())  # Aplica los estilos a toda la aplicación
+    app.setStyleSheet(obtener_estilos())
     
-    # Intenta cargar un icono para la aplicación si existe
+    # Configurar icono de la aplicación
     icon_path = os.path.join(os.path.dirname(__file__), "recursos", "icono.png")
     if os.path.exists(icon_path):
         app.setWindowIcon(QIcon(icon_path))
     
-    ventana = MainWindow()  # Creamos la ventana principal
-    ventana.show()  # Mostramos la ventana
-    sys.exit(app.exec())
+    return app
+
+def main():
+    """Función principal de la aplicación"""
+    # Verificar dependencias
+    check_dependencies(['Pillow', 'qrcode[pil]'])
     
+    # Iniciar aplicación
+    app = setup_application()
+    
+    try:
+        ventana = MainWindow()
+        ventana.show()
+        return app.exec()
+    except Exception as e:
+        print(f"Error al iniciar la aplicación: {e}")
+        return 1
+
+if __name__ == "__main__":
+    sys.exit(main())

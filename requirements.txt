@@ -1,0 +1,4 @@
+PyQt6>=6.4
+Pillow>=9.0
+qrcode[pil]>=7.0
+cairosvg>=2.5
