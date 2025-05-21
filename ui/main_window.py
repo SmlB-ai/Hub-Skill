@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QStackedWidget
 from ui.components.navigation_panel import NavigationPanel
 from ui.components.inicio_panel import InicioPanel
 from modulos.productos import ProductosWindow
-from modulos.redes import RedesWindow
+from modulos.sku import SkuWindow
 from modulos.reescalado import ReescaladoWindow
 from modulos.mockup_generator import MockupGeneratorWindow
 from modulos.qr_generator import QrGeneratorWindow
@@ -29,7 +29,7 @@ class MainWindow(QMainWindow):
         # Instanciar los módulos como widgets/paneles
         self.inicio_panel = InicioPanel()
         self.productos_widget = ProductosWindow()
-        self.redes_widget = RedesWindow()
+        self.sku_widget = SkuWindow()
         self.reescalado_widget = ReescaladoWindow()
         self.mockup_widget = MockupGeneratorWindow()
         self.qr_widget = QrGeneratorWindow()
@@ -37,7 +37,7 @@ class MainWindow(QMainWindow):
         # Agregar los paneles al stacked_widget en el ORDEN DEL FLUJO
         self.stacked_widget.addWidget(self.inicio_panel)        # index 0 - Panel de inicio
         self.stacked_widget.addWidget(self.productos_widget)    # index 1 - Datos de producto
-        self.stacked_widget.addWidget(self.redes_widget)        # index 2 - SKU y Códigos (cámbialo por tu panel SKU cuando lo tengas)
+        self.stacked_widget.addWidget(self.sku_widget)     # index 2 - SKU y Códigos (cámbialo por tu panel SKU cuando lo tengas)
         self.stacked_widget.addWidget(self.reescalado_widget)   # index 3 - Imágenes
         self.stacked_widget.addWidget(self.mockup_widget)       # index 4 - URLs (cámbialo por tu panel URLs cuando lo tengas)
         self.stacked_widget.addWidget(self.qr_widget)           # index 5 - Publicar/Exportar (cámbialo por tu panel Publicar cuando lo tengas)

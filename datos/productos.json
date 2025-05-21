@@ -1,24 +1,62 @@
 [
   {
+    "id": "22d0dcf1-147f-4c02-a9df-3b5f12e9d312",
+    "sku": "",
+    "nombre": "Poster",
     "marca": "SkillHub",
-    "producto": "Poster",
     "tecnica": "Sublimación",
     "tamano": "20 x 30",
     "color": "Blanco",
     "forma": "Rectangular",
     "diseno": "robot-salvaje-01",
     "categoria": "Hogar",
-    "subcategoria": "Decoración"
+    "subcategoria": "Decoración",
+    "descripcion_corta": "poster decorativo para tu casa de Robot salvaje",
+    "descripcion_larga": "poster decorativo para tu casa de Robot salvaje lindo y duradero"
   },
   {
+    "id": "52641ece-92e1-4ae6-aa17-6e928e34b743",
+    "sku": "",
+    "nombre": "Playera",
     "marca": "SkillHub",
-    "producto": "Playera",
     "tecnica": "Sublimación",
     "tamano": "S",
     "color": "Blanco",
-    "forma": "Normal",
+    "forma": "Rectangular",
     "diseno": "Gato-01",
     "categoria": "Ropa",
-    "subcategoria": "Playeras"
+    "subcategoria": "Playeras",
+    "descripcion_corta": "playera s gato",
+    "descripcion_larga": "playera s gato  diseño lñindo y estetico apra toda ocacion"
+  },
+  {
+    "id": "20eece7c-2ac7-4031-bd03-b7f84b604ea6",
+    "sku": "",
+    "nombre": "Tote Bag",
+    "marca": "Woof Arhini",
+    "tecnica": "Ninguna (materia Prima)",
+    "tamano": "35x40 Tote",
+    "color": "crudo",
+    "forma": "Rectangular",
+    "diseno": "sin diseño",
+    "categoria": "Bolsas Tote",
+    "subcategoria": "",
+    "descripcion_corta": "tote tipo bolsa como materia prima para uso de talleres de sublimacion, dtf etc",
+    "descripcion_larga": "tote tipo bolsa como materia prima para uso de talleres de sublimacion, dtf etc pero mas"
+  },
+  {
+    "id": "20eece7c-2ac7-4031-bd03-b7f84b604ea6",
+    "sku": "",
+    "nombre": "Sudadera",
+    "marca": "Woof Arhini",
+    "tecnica": "DTF",
+    "tamano": "XL",
+    "color": "Negro",
+    "forma": "Normal",
+    "diseno": "anime-girl-01",
+    "categoria": "Ropa",
+    "subcategoria": "Sudaderas",
+    "descripcion_corta": "123",
+    "descripcion_larga": "123456"
   }
 ]

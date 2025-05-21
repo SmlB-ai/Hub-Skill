@@ -1,8 +1,9 @@
 import json
 import os
+import uuid
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QListWidget, QHBoxLayout,
-    QFormLayout, QComboBox, QMessageBox, QFileDialog, QInputDialog
+    QFormLayout, QComboBox, QMessageBox, QFileDialog, QInputDialog, QLineEdit, QTextEdit
 )
 from PyQt6.QtCore import Qt
 
@@ -90,13 +91,26 @@ class ProductosWindow(QWidget):
 
         # Lista de productos
         self.lista_productos = QListWidget()
-        self.lista_productos.currentRowChanged.connect(self.cargar_producto_en_formulario)
         self.refresh_product_list()
         self.lista_productos.setMinimumHeight(180)
         main_layout.addWidget(self.lista_productos)
 
         # Formulario
         form = QFormLayout()
+
+        self.sku_input = QLineEdit()
+        self.sku_input.setPlaceholderText("SKU único (opcional, puede autogenerarse en otro módulo)")
+        form.addRow("SKU:", self.sku_input)
+
+        self.nombre_combo = QComboBox()
+        self.nombre_combo.addItems(self.nombres_producto)
+        btn_add_nombre = QPushButton("+ Producto")
+        btn_add_nombre.setFixedWidth(90)
+        btn_add_nombre.clicked.connect(self.add_nombre_producto)
+        h_nombre = QHBoxLayout()
+        h_nombre.addWidget(self.nombre_combo)
+        h_nombre.addWidget(btn_add_nombre)
+        form.addRow("Nombre:", h_nombre)
 
         self.marca_combo = QComboBox()
         self.marca_combo.addItems(self.marcas)
@@ -106,15 +120,7 @@ class ProductosWindow(QWidget):
         h_marca = QHBoxLayout()
         h_marca.addWidget(self.marca_combo)
         h_marca.addWidget(btn_add_marca)
-
-        self.producto_combo = QComboBox()
-        self.producto_combo.addItems(self.nombres_producto)
-        btn_add_producto = QPushButton("+ Producto")
-        btn_add_producto.setFixedWidth(90)
-        btn_add_producto.clicked.connect(self.add_producto)
-        h_producto = QHBoxLayout()
-        h_producto.addWidget(self.producto_combo)
-        h_producto.addWidget(btn_add_producto)
+        form.addRow("Marca:", h_marca)
 
         self.tecnica_combo = QComboBox()
         self.tecnica_combo.addItems(self.tecnicas)
@@ -124,6 +130,7 @@ class ProductosWindow(QWidget):
         h_tecnica = QHBoxLayout()
         h_tecnica.addWidget(self.tecnica_combo)
         h_tecnica.addWidget(btn_add_tecnica)
+        form.addRow("Técnica:", h_tecnica)
 
         self.tamano_combo = QComboBox()
         self.tamano_combo.addItems(self.tamanos)
@@ -133,6 +140,7 @@ class ProductosWindow(QWidget):
         h_tamano = QHBoxLayout()
         h_tamano.addWidget(self.tamano_combo)
         h_tamano.addWidget(btn_add_tamano)
+        form.addRow("Tamaño:", h_tamano)
 
         self.color_combo = QComboBox()
         self.color_combo.addItems(self.colores)
@@ -142,6 +150,7 @@ class ProductosWindow(QWidget):
         h_color = QHBoxLayout()
         h_color.addWidget(self.color_combo)
         h_color.addWidget(btn_add_color)
+        form.addRow("Color:", h_color)
 
         self.forma_combo = QComboBox()
         self.forma_combo.addItems(self.formas)
@@ -151,11 +160,11 @@ class ProductosWindow(QWidget):
         h_forma = QHBoxLayout()
         h_forma.addWidget(self.forma_combo)
         h_forma.addWidget(btn_add_forma)
+        form.addRow("Forma:", h_forma)
 
-        self.diseno_input = QInputDialog()
-        self.diseno_combo = QComboBox()
-        self.diseno_combo.setEditable(True)  # Puedes editar manualmente el diseño
-        # Por ahora no se guarda un catálogo de diseños
+        self.diseno_input = QLineEdit()
+        self.diseno_input.setPlaceholderText("Breve referencia del diseño")
+        form.addRow("Diseño:", self.diseno_input)
 
         self.categoria_combo = QComboBox()
         self.subcategoria_combo = QComboBox()
@@ -173,16 +182,17 @@ class ProductosWindow(QWidget):
         h_subcat = QHBoxLayout()
         h_subcat.addWidget(self.subcategoria_combo)
         h_subcat.addWidget(btn_add_subcat)
-
-        form.addRow("Marca:", h_marca)
-        form.addRow("Producto:", h_producto)
-        form.addRow("Técnica:", h_tecnica)
-        form.addRow("Tamaño:", h_tamano)
-        form.addRow("Color:", h_color)
-        form.addRow("Forma:", h_forma)
-        form.addRow("Diseño:", self.diseno_combo)
         form.addRow("Categoría:", h_cat)
         form.addRow("Subcategoría:", h_subcat)
+
+        self.descripcion_corta_input = QLineEdit()
+        self.descripcion_corta_input.setPlaceholderText("Descripción corta para tienda o catálogo")
+        form.addRow("Descripción corta:", self.descripcion_corta_input)
+
+        self.descripcion_larga_input = QTextEdit()
+        self.descripcion_larga_input.setPlaceholderText("Descripción larga (opcional)")
+        self.descripcion_larga_input.setFixedHeight(60)
+        form.addRow("Descripción larga:", self.descripcion_larga_input)
 
         main_layout.addLayout(form)
 
@@ -203,6 +213,8 @@ class ProductosWindow(QWidget):
         button_layout.addWidget(self.btn_exportar)
         main_layout.addLayout(button_layout)
 
+        self.lista_productos.currentRowChanged.connect(self.cargar_producto_en_formulario)
+
     # Métodos para agregar nuevos valores a los combos y guardar
     def add_marca(self):
         text, ok = QInputDialog.getText(self, "Agregar Marca", "Nombre de nueva marca:")
@@ -211,11 +223,11 @@ class ProductosWindow(QWidget):
             self.marca_combo.addItem(text)
             self.save_data()
 
-    def add_producto(self):
+    def add_nombre_producto(self):
         text, ok = QInputDialog.getText(self, "Agregar Producto", "Nombre de nuevo producto:")
         if ok and text and text not in self.nombres_producto:
             self.nombres_producto.append(text)
-            self.producto_combo.addItem(text)
+            self.nombre_combo.addItem(text)
             self.save_data()
 
     def add_tecnica(self):
@@ -248,8 +260,8 @@ class ProductosWindow(QWidget):
 
     def refresh_product_list(self):
         self.lista_productos.clear()
-        for i, p in enumerate(self.productos):
-            txt = f'{p["marca"]} - {p["producto"]} - {p["categoria"]}/{p["subcategoria"]}'
+        for p in self.productos:
+            txt = f'{p.get("nombre", "")} - {p.get("sku", "")} - {p.get("categoria", "")}/{p.get("subcategoria", "")}'
             self.lista_productos.addItem(txt)
 
     def refresh_categorias(self):
@@ -279,34 +291,48 @@ class ProductosWindow(QWidget):
             self.save_data()
 
     def clear_form(self):
+        self.sku_input.clear()
+        self.nombre_combo.setCurrentIndex(0)
         self.marca_combo.setCurrentIndex(0)
-        self.producto_combo.setCurrentIndex(0)
         self.tecnica_combo.setCurrentIndex(0)
         self.tamano_combo.setCurrentIndex(0)
         self.color_combo.setCurrentIndex(0)
         self.forma_combo.setCurrentIndex(0)
-        self.diseno_combo.setEditText("")
+        self.diseno_input.clear()
         self.categoria_combo.setCurrentIndex(0)
         self.subcategoria_combo.setCurrentIndex(0)
+        self.descripcion_corta_input.clear()
+        self.descripcion_larga_input.clear()
 
     def get_form_data(self):
+        # Si el producto ya tiene un id, recupéralo, si no genera uno nuevo
+        idx = self.lista_productos.currentRow()
+        prod_id = None
+        if idx >= 0 and idx < len(self.productos):
+            prod_id = self.productos[idx].get("id")
+        if not prod_id:
+            prod_id = str(uuid.uuid4())
         return {
+            "id": prod_id,
+            "sku": self.sku_input.text().strip(),
+            "nombre": self.nombre_combo.currentText(),
             "marca": self.marca_combo.currentText(),
-            "producto": self.producto_combo.currentText(),
             "tecnica": self.tecnica_combo.currentText(),
             "tamano": self.tamano_combo.currentText(),
             "color": self.color_combo.currentText(),
             "forma": self.forma_combo.currentText(),
-            "diseno": self.diseno_combo.currentText(),
+            "diseno": self.diseno_input.text().strip(),
             "categoria": self.categoria_combo.currentText(),
             "subcategoria": self.subcategoria_combo.currentText(),
+            "descripcion_corta": self.descripcion_corta_input.text().strip(),
+            "descripcion_larga": self.descripcion_larga_input.toPlainText().strip(),
         }
 
     def agregar_producto(self):
         data = self.get_form_data()
         # Validar campos obligatorios
-        if not all([data["marca"], data["producto"]]):
-            QMessageBox.warning(self, "Campos requeridos", "Marca y Producto son obligatorios.")
+        if not data["nombre"]:
+            QMessageBox.warning(self, "Campos requeridos", "El nombre del producto es obligatorio.")
             return
         self.productos.append(data)
         self.save_data()
@@ -319,8 +345,8 @@ class ProductosWindow(QWidget):
             QMessageBox.information(self, "Selecciona", "Elige un producto para editar.")
             return
         data = self.get_form_data()
-        if not all([data["marca"], data["producto"]]):
-            QMessageBox.warning(self, "Campos requeridos", "Marca y Producto son obligatorios.")
+        if not data["nombre"]:
+            QMessageBox.warning(self, "Campos requeridos", "El nombre del producto es obligatorio.")
             return
         self.productos[idx] = data
         self.save_data()
@@ -346,12 +372,14 @@ class ProductosWindow(QWidget):
             with open(path, "w", newline='', encoding="utf-8") as f:
                 writer = csv.writer(f)
                 writer.writerow([
-                    "Marca", "Producto", "Técnica", "Tamaño", "Color", "Forma", "Diseño", "Categoría", "Subcategoría"
+                    "ID", "SKU", "Nombre", "Marca", "Técnica", "Tamaño", "Color", "Forma", "Diseño",
+                    "Categoría", "Subcategoría", "Descripción corta", "Descripción larga"
                 ])
                 for p in self.productos:
                     writer.writerow([
-                        p["marca"], p["producto"], p["tecnica"], p["tamano"],
-                        p["color"], p["forma"], p["diseno"], p["categoria"], p["subcategoria"]
+                        p.get("id", ""), p.get("sku", ""), p.get("nombre", ""), p.get("marca", ""), p.get("tecnica", ""),
+                        p.get("tamano", ""), p.get("color", ""), p.get("forma", ""), p.get("diseno", ""),
+                        p.get("categoria", ""), p.get("subcategoria", ""), p.get("descripcion_corta", ""), p.get("descripcion_larga", "")
                     ])
             QMessageBox.information(self, "Exportado", "Productos exportados a CSV con éxito.")
         except Exception as e:
@@ -359,16 +387,19 @@ class ProductosWindow(QWidget):
 
     def cargar_producto_en_formulario(self, idx):
         if idx < 0 or idx >= len(self.productos):
+            self.clear_form()
             return
         p = self.productos[idx]
+        self.sku_input.setText(p.get("sku", ""))
+        self.nombre_combo.setCurrentText(p.get("nombre", ""))
         self.marca_combo.setCurrentText(p.get("marca", ""))
-        self.producto_combo.setCurrentText(p.get("producto", ""))
         self.tecnica_combo.setCurrentText(p.get("tecnica", ""))
         self.tamano_combo.setCurrentText(p.get("tamano", ""))
         self.color_combo.setCurrentText(p.get("color", ""))
         self.forma_combo.setCurrentText(p.get("forma", ""))
-        self.diseno_combo.setEditText(p.get("diseno", ""))
+        self.diseno_input.setText(p.get("diseno", ""))
         self.categoria_combo.setCurrentText(p.get("categoria", ""))
-        # Actualiza subcategorías cuando cambia la categoría
         self.update_subcategorias()
         self.subcategoria_combo.setCurrentText(p.get("subcategoria", ""))
+        self.descripcion_corta_input.setText(p.get("descripcion_corta", ""))
+        self.descripcion_larga_input.setPlainText(p.get("descripcion_larga", ""))
