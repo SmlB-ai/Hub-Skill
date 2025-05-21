@@ -1,67 +1,47 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QStackedWidget, QMessageBox
+from ui.components.navigation_panel import NavigationPanel
+from modulos.productos import ProductosWindow
+from modulos.redes import RedesWindow
+from modulos.reescalado import ReescaladoWindow
+from modulos.mockup_generator import MockupGeneratorWindow
+from modulos.qr_generator import QrGeneratorWindow
 
-class MainWindow(QWidget):
-    """Panel de navegación interactivo"""
-    
-    # Señales para cada botón
-    productos_clicked = pyqtSignal()
-    redes_clicked = pyqtSignal()
-    reescalado_clicked = pyqtSignal()
-    mockup_clicked = pyqtSignal()
-    qr_clicked = pyqtSignal()
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setup_ui()
-    
-    def setup_ui(self):
-        layout = QVBoxLayout(self)
-        
-        # Crear botones con estilo consistente
-        buttons = [
-            ("📦 Productos", self.productos_clicked),
-            ("🌐 Redes Sociales", self.redes_clicked),
-            ("🖼️ Reescalado", self.reescalado_clicked),
-            ("🧮 MockupGenerator", self.mockup_clicked),
-            ("📱 Código QR", self.qr_clicked)
-        ]
-        
-        for text, signal in buttons:
-            btn = QPushButton(text)
-            btn.setStyleSheet("""
-                QPushButton {
-                    font-size: 14pt;
-                    padding: 10px;
-                    text-align: left;
-                    border: none;
-                    background: transparent;
-                }
-                QPushButton:hover {
-                    background-color: rgba(76, 175, 80, 0.1);
-                }
-            """)
-            btn.clicked.connect(signal)
-            layout.addWidget(btn)
-        
-        layout.addStretch()
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Hub-Skill")
+        self.setMinimumSize(1200, 800)
 
+        # Layout principal
+        central_widget = QWidget()
+        main_layout = QHBoxLayout(central_widget)
+        self.setCentralWidget(central_widget)
 
-def open_window(self, WindowClass, window_name):
-    """
-    Abre una ventana de manera segura con manejo de errores.
-    
-    Args:
-        WindowClass: Clase de la ventana a abrir
-        window_name: Nombre de la ventana para mensajes de error
-    """
-    try:
-        window = WindowClass()
-        window.show()
-        setattr(self, f"{window_name}_window", window)
-    except Exception as e:
-        QMessageBox.critical(
-            self,
-            "Error",
-            f"Error al abrir {window_name}: {str(e)}"
-        )
+        # Barra de navegación
+        self.navigation_panel = NavigationPanel()
+        main_layout.addWidget(self.navigation_panel)
+
+        # Área central apilada
+        self.stacked_widget = QStackedWidget()
+        main_layout.addWidget(self.stacked_widget, 1)
+
+        # Instanciar los módulos como widgets
+        self.productos_widget = ProductosWindow()
+        self.redes_widget = RedesWindow()
+        self.reescalado_widget = ReescaladoWindow()
+        self.mockup_widget = MockupGeneratorWindow()
+        self.qr_widget = QrGeneratorWindow()
+
+        # Agregar los módulos al stacked_widget
+        self.stacked_widget.addWidget(self.productos_widget)    # index 0
+        self.stacked_widget.addWidget(self.redes_widget)        # index 1
+        self.stacked_widget.addWidget(self.reescalado_widget)   # index 2
+        self.stacked_widget.addWidget(self.mockup_widget)       # index 3
+        self.stacked_widget.addWidget(self.qr_widget)           # index 4
+
+        # Conectar navegación
+        self.navigation_panel.productos_clicked.connect(lambda: self.stacked_widget.setCurrentIndex(0))
+        self.navigation_panel.redes_clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))
+        self.navigation_panel.reescalado_clicked.connect(lambda: self.stacked_widget.setCurrentIndex(2))
+        self.navigation_panel.mockup_clicked.connect(lambda: self.stacked_widget.setCurrentIndex(3))
+        self.navigation_panel.qr_clicked.connect(lambda: self.stacked_widget.setCurrentIndex(4))
