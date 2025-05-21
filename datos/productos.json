@@ -1,0 +1,24 @@
+[
+  {
+    "marca": "SkillHub",
+    "producto": "Poster",
+    "tecnica": "Sublimación",
+    "tamano": "20 x 30",
+    "color": "Blanco",
+    "forma": "Rectangular",
+    "diseno": "robot-salvaje-01",
+    "categoria": "Hogar",
+    "subcategoria": "Decoración"
+  },
+  {
+    "marca": "SkillHub",
+    "producto": "Playera",
+    "tecnica": "Sublimación",
+    "tamano": "S",
+    "color": "Blanco",
+    "forma": "Normal",
+    "diseno": "Gato-01",
+    "categoria": "Ropa",
+    "subcategoria": "Playeras"
+  }
+]

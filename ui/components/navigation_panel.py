@@ -2,24 +2,40 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton
 from PyQt6.QtCore import pyqtSignal
 
 class NavigationPanel(QWidget):
+    inicio_clicked = pyqtSignal()
     productos_clicked = pyqtSignal()
-    redes_clicked = pyqtSignal()
-    reescalado_clicked = pyqtSignal()
-    mockup_clicked = pyqtSignal()
-    qr_clicked = pyqtSignal()
+    sku_clicked = pyqtSignal()
+    imagenes_clicked = pyqtSignal()
+    urls_clicked = pyqtSignal()
+    publicar_clicked = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         layout = QVBoxLayout(self)
+
+        # Botones en el orden del flujo de trabajo
         btns = [
-            ("📦 Productos", self.productos_clicked),
-            ("🌐 Redes Sociales", self.redes_clicked),
-            ("🖼️ Reescalado", self.reescalado_clicked),
-            ("🧮 MockupGenerator", self.mockup_clicked),
-            ("📱 Código QR", self.qr_clicked),
+            ("🏠 Inicio", self.inicio_clicked),
+            ("📦 Datos de producto", self.productos_clicked),
+            ("🔖 SKU y Códigos", self.sku_clicked),
+            ("🖼️ Imágenes", self.imagenes_clicked),
+            ("🔗 URLs", self.urls_clicked),
+            ("🚀 Publicar / Exportar", self.publicar_clicked),
         ]
         for text, signal in btns:
             btn = QPushButton(text)
+            btn.setStyleSheet("""
+                QPushButton {
+                    font-size: 14pt;
+                    padding: 10px;
+                    text-align: left;
+                    border: none;
+                    background: transparent;
+                }
+                QPushButton:hover {
+                    background-color: rgba(76, 175, 80, 0.1);
+                }
+            """)
             btn.clicked.connect(signal)
             layout.addWidget(btn)
         layout.addStretch()
