@@ -93,12 +93,17 @@ class SkuWindow(QWidget):
         self.lista_productos.currentRowChanged.connect(self.mostrar_sku_actual)
         btn_copiar.clicked.connect(self.copiar_sku_al_portapapeles)
 
+        # Botón para actualizar todos los SKUs en el JSON
+        btn_actualizar = QPushButton("Actualizar todos los SKUs en productos.json")
+        btn_actualizar.clicked.connect(self.actualizar_todos_los_skus)
+        main_layout.addWidget(btn_actualizar)
+
     def catalog_index_code(self, value, catalog, letter):
         try:
             idx = catalog.index(value)
         except ValueError:
             idx = 0
-        return f"{idx}{letter}"
+        return f"{idx+1:02d}{letter}"
 
     def producto_index_code(self, value):
         try:
@@ -202,3 +207,17 @@ class SkuWindow(QWidget):
         self.load_catalogs_and_products()
         self.refresh_product_list()
         self.sku_input.clear()
+
+    def actualizar_todos_los_skus(self):
+        if not self.productos:
+            QMessageBox.warning(self, "Error", "No hay productos cargados.")
+            return
+
+        # Actualiza todos los SKUs en el JSON
+        for prod in self.productos:
+            prod["sku"] = self.calcular_sku(prod)
+
+        with open(PRODUCTOS_FILE, "w", encoding="utf-8") as f:
+            json.dump(self.productos, f, ensure_ascii=False, indent=2)
+        QMessageBox.information(self, "Listo", "Todos los SKUs fueron actualizados en productos.json.\nAhora puedes usar el módulo de reescalado sin problemas.")
+        self.reload_and_refresh()

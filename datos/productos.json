@@ -1,7 +1,7 @@
 [
   {
     "id": "22d0dcf1-147f-4c02-a9df-3b5f12e9d312",
-    "sku": "",
+    "sku": "02M-03P-01T-01C-04S-02F-ROB",
     "nombre": "Poster",
     "marca": "SkillHub",
     "tecnica": "Sublimación",
@@ -16,7 +16,7 @@
   },
   {
     "id": "52641ece-92e1-4ae6-aa17-6e928e34b743",
-    "sku": "",
+    "sku": "02M-01P-01T-01C-05S-02F-GAT",
     "nombre": "Playera",
     "marca": "SkillHub",
     "tecnica": "Sublimación",
@@ -31,7 +31,7 @@
   },
   {
     "id": "20eece7c-2ac7-4031-bd03-b7f84b604ea6",
-    "sku": "",
+    "sku": "03M-05P-04T-04C-06S-02F-SIN",
     "nombre": "Tote Bag",
     "marca": "Woof Arhini",
     "tecnica": "Ninguna (materia Prima)",
@@ -46,7 +46,7 @@
   },
   {
     "id": "20eece7c-2ac7-4031-bd03-b7f84b604ea6",
-    "sku": "",
+    "sku": "03M-04P-02T-02C-07S-04F-ANI",
     "nombre": "Sudadera",
     "marca": "Woof Arhini",
     "tecnica": "DTF",
@@ -56,6 +56,21 @@
     "diseno": "anime-girl-01",
     "categoria": "Ropa",
     "subcategoria": "Sudaderas",
+    "descripcion_corta": "123",
+    "descripcion_larga": "123456"
+  },
+  {
+    "id": "f70819f8-b4e6-4557-b4d2-0952c2d46896",
+    "sku": "02M-02P-01T-01C-08S-04F-ESC",
+    "nombre": "Taza",
+    "marca": "SkillHub",
+    "tecnica": "Sublimación",
+    "tamano": "11 oz",
+    "color": "Blanco",
+    "forma": "Normal",
+    "diseno": "escandalosos-01",
+    "categoria": "Tazas",
+    "subcategoria": "Taza Blanca",
     "descripcion_corta": "123",
     "descripcion_larga": "123456"
   }

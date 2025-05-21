@@ -1,549 +1,349 @@
 import os
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
-                            QFileDialog, QSlider, QSpinBox, QComboBox, QProgressBar,
-                            QMessageBox, QGridLayout, QFrame, QCheckBox)
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QPixmap, QImage
+import json
+import shutil
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFileDialog,
+    QListWidget, QListWidgetItem, QComboBox, QMessageBox, QSpinBox, QSlider,
+    QCheckBox, QGroupBox, QAbstractItemView
+)
+from PyQt6.QtGui import QPixmap, QIcon, QDragEnterEvent, QDropEvent
+from PyQt6.QtCore import Qt, QSize
 from PIL import Image
-import time
 
-class WorkerThread(QThread):
-    """Hilo de trabajo para procesar imágenes sin bloquear la interfaz"""
-    progress = pyqtSignal(int)
-    finished = pyqtSignal(bool)
-    
-    def __init__(self, input_dir, output_dir, width, height, mode="exact", format="PNG", quality=90):
-        super().__init__()
-        self.input_dir = input_dir
-        self.output_dir = output_dir
-        self.width = width
-        self.height = height
-        self.mode = mode
-        self.format = format
-        self.quality = quality
-        self.running = True
-        
-    def run(self):
-        try:
-            # Encuentra todas las imágenes en el directorio de entrada
-            image_files = []
-            for root, _, files in os.walk(self.input_dir):
-                for file in files:
-                    if file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.webp')):
-                        image_files.append(os.path.join(root, file))
-            
-            total = len(image_files)
-            if total == 0:
-                self.finished.emit(False)
-                return
-                
-            # Procesa cada imagen
-            for i, image_path in enumerate(image_files):
-                if not self.running:
-                    break
-                    
-                try:
-                    # Abre la imagen
-                    img = Image.open(image_path)
-                    
-                    # Determina si se debe reescalar o mantener dimensiones originales
-                    if self.width == 0 or self.height == 0:
-                        # Si width o height es 0, mantener dimensiones originales
-                        resized_img = img  # No hacer reescalado
-                    else:
-                        # Aplica el reescalado según el modo seleccionado
-                        if self.mode == "exact":
-                            resized_img = img.resize((self.width, self.height), Image.Resampling.LANCZOS)
-                        elif self.mode == "proporcional":
-                            # Mantiene la proporción ajustando al ancho
-                            ratio = self.width / img.width
-                            new_height = int(img.height * ratio)
-                            resized_img = img.resize((self.width, new_height), Image.Resampling.LANCZOS)
-                        elif self.mode == "max":
-                            # Escala manteniendo proporción pero sin exceder dimensiones máximas
-                            img_ratio = img.width / img.height
-                            target_ratio = self.width / self.height
-                            if img_ratio > target_ratio:
-                                # Limitar por ancho
-                                new_width = self.width
-                                new_height = int(new_width / img_ratio)
-                            else:
-                                # Limitar por alto
-                                new_height = self.height
-                                new_width = int(new_height * img_ratio)
-                            resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-                    
-                    # Crea el nombre de archivo de salida
-                    filename = os.path.basename(image_path)
-                    name, _ = os.path.splitext(filename)
-                    output_format = self.format.lower()
-                    
-                    # Asegura que la extensión sea correcta
-                    if output_format == "jpg":
-                        output_format = "jpeg"
-                    
-                    output_path = os.path.join(self.output_dir, f"{name}.{output_format}")
-                    
-                    # Guarda la imagen con la calidad especificada
-                    if output_format in ["jpeg", "jpg"]:
-                        resized_img.save(output_path, format=output_format.upper(), quality=self.quality)
-                    else:
-                        resized_img.save(output_path, format=output_format.upper())
-                        
-                except Exception as e:
-                    print(f"Error al procesar {image_path}: {e}")
-                
-                # Actualiza el progreso
-                progress_value = int((i + 1) / total * 100)
-                self.progress.emit(progress_value)
-                
-            self.finished.emit(True)
-        except Exception as e:
-            print(f"Error en el procesamiento: {e}")
-            self.finished.emit(False)
-    
-    def stop(self):
-        self.running = False
+DATA_DIR = "datos"
+PRODUCTOS_FILE = os.path.join(DATA_DIR, "productos.json")
+DEFAULT_IMAGES_ROOT = os.path.abspath("imagenes_productos")
 
+def ensure_dir(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
 
 class ReescaladoWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Reescalado de Imágenes")
-        self.setMinimumSize(900, 700)  # Ventana más grande
-        self.input_dir = ""
-        self.output_dir = ""
-        self.worker = None
-        
+        self.setWindowTitle("Gestión y Optimización de Imágenes de Productos")
+        self.setMinimumSize(950, 600)
+        self.setAcceptDrops(True)
+        self.imagenes_raiz = self.cargar_ruta_raiz()
+        self.carpeta_actual = ""
+        self.productos = []
+        self.imagenes = []
+        self.sku_seleccionado = ""
+        self.formato_salida = "JPG"
+        self.guardar_original = False
         self.init_ui()
-        
+        self.cargar_productos()
+        self.actualizar_lista_imagenes()
+
+    def cargar_ruta_raiz(self):
+        config_file = os.path.join(DATA_DIR, "imagenes_config.json")
+        if os.path.exists(config_file):
+            with open(config_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data.get("imagenes_raiz", DEFAULT_IMAGES_ROOT)
+        return DEFAULT_IMAGES_ROOT
+
+    def guardar_ruta_raiz(self):
+        config_file = os.path.join(DATA_DIR, "imagenes_config.json")
+        with open(config_file, "w", encoding="utf-8") as f:
+            json.dump({"imagenes_raiz": self.imagenes_raiz}, f, ensure_ascii=False, indent=2)
+
     def init_ui(self):
-        main_layout = QVBoxLayout()
-        
-        # Título
-        title_label = QLabel("Reescalado de Imágenes")
-        title_label.setStyleSheet("""
-            font-size: 22pt; 
-            font-weight: bold; 
-            margin-bottom: 20px;
-            color: #2196F3;
-        """)
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        main_layout.addWidget(title_label)
-        
-        # Marco para la visualización de imágenes
-        self.preview_frame = QFrame()
-        self.preview_frame.setFrameShape(QFrame.Shape.StyledPanel)
-        self.preview_frame.setMinimumHeight(300)  # Vista previa más grande
-        self.preview_frame.setStyleSheet("""
-            QFrame {
-                background-color: #2C2C2C;
-                border-radius: 10px;
-                border: 2px solid #3C3C3C;
-            }
-        """)
-        
-        preview_layout = QVBoxLayout()
-        self.image_preview = QLabel("Vista previa no disponible")
-        self.image_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.image_preview.setStyleSheet("""
-            color: #FFFFFF;
-            background-color: transparent;
-            padding: 10px;
-        """)
-        preview_layout.addWidget(self.image_preview)
-        self.preview_frame.setLayout(preview_layout)
-        
-        main_layout.addWidget(self.preview_frame)
-        
-        # Selección de directorios
-        dir_layout = QGridLayout()
-        
-        # Directorio de entrada
-        input_label = QLabel("Directorio de entrada:")
-        input_label.setStyleSheet("color: #FFFFFF;")
-        dir_layout.addWidget(input_label, 0, 0)
-        
-        self.input_path_label = QLabel("No seleccionado")
-        self.input_path_label.setStyleSheet("""
-            background-color: #424242;
-            padding: 8px;
-            border-radius: 5px;
-            color: #FFFFFF;
-        """)
-        dir_layout.addWidget(self.input_path_label, 0, 1)
-        
-        input_btn = QPushButton("Seleccionar")
-        input_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #2196F3;
-                color: white;
-                border: none;
-                padding: 8px;
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: #1976D2;
-            }
-        """)
-        input_btn.clicked.connect(self.select_input_dir)
-        dir_layout.addWidget(input_btn, 0, 2)
-        
-        # Directorio de salida
-        output_label = QLabel("Directorio de salida:")
-        output_label.setStyleSheet("color: #FFFFFF;")
-        dir_layout.addWidget(output_label, 1, 0)
-        
-        self.output_path_label = QLabel("No seleccionado")
-        self.output_path_label.setStyleSheet("""
-            background-color: #424242;
-            padding: 8px;
-            border-radius: 5px;
-            color: #FFFFFF;
-        """)
-        dir_layout.addWidget(self.output_path_label, 1, 1)
-        
-        output_btn = QPushButton("Seleccionar")
-        output_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #2196F3;
-                color: white;
-                border: none;
-                padding: 8px;
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: #1976D2;
-            }
-        """)
-        output_btn.clicked.connect(self.select_output_dir)
-        dir_layout.addWidget(output_btn, 1, 2)
-        
-        main_layout.addLayout(dir_layout)
-        
-        # Opciones de reescalado
-        options_layout = QGridLayout()
-        
-        # Checkbox para mantener dimensiones originales
-        self.keep_dimensions_check = QCheckBox("Mantener dimensiones originales")
-        self.keep_dimensions_check.setStyleSheet("color: #FFFFFF;")
-        self.keep_dimensions_check.toggled.connect(self.toggle_dimension_fields)
-        options_layout.addWidget(self.keep_dimensions_check, 0, 0, 1, 4)
-        
-        # Dimensiones
-        width_label = QLabel("Ancho:")
-        width_label.setStyleSheet("color: #FFFFFF;")
-        options_layout.addWidget(width_label, 1, 0)
-        
-        self.width_spin = QSpinBox()
-        self.width_spin.setRange(1, 10000)
-        self.width_spin.setValue(800)
-        self.width_spin.setMinimumWidth(220)  # Más ancho
-        self.width_spin.setStyleSheet("""
-            QSpinBox {
-                background-color: #424242;
-                color: #FFFFFF;
-                border: 1px solid #555555;
-                padding: 3px;
-                border-radius: 5px;
-            }
-        """)
-        options_layout.addWidget(self.width_spin, 1, 1)
-        
-        height_label = QLabel("Alto:")
-        height_label.setStyleSheet("color: #FFFFFF;")
-        options_layout.addWidget(height_label, 1, 2)
-        
-        self.height_spin = QSpinBox()
-        self.height_spin.setRange(1, 10000)
-        self.height_spin.setValue(600)
-        self.height_spin.setMinimumWidth(220)  # Más ancho
-        self.height_spin.setStyleSheet("""
-            QSpinBox {
-                background-color: #424242;
-                color: #FFFFFF;
-                border: 1px solid #555555;
-                padding: 3px;
-                border-radius: 5px;
-            }
-        """)
-        options_layout.addWidget(self.height_spin, 1, 3)
-        
-        # Modo de reescalado
-        mode_label = QLabel("Modo de reescalado:")
-        mode_label.setStyleSheet("color: #FFFFFF;")
-        options_layout.addWidget(mode_label, 2, 0)
-        
-        self.mode_combo = QComboBox()
-        self.mode_combo.addItems(["Exacto", "Proporcional", "Máximo"])
-        self.mode_combo.setStyleSheet("""
-            QComboBox {
-                background-color: #424242;
-                color: #FFFFFF;
-                border: 1px solid #555555;
-                padding: 5px;
-                border-radius: 5px;
-            }
-            QComboBox::drop-down {
-                border: none;
-            }
-            QComboBox::down-arrow {
-                image: none;
-                border-left: 5px solid #FFFFFF;
-                border-right: 5px solid transparent;
-                border-top: 5px solid #FFFFFF;
-            }
-        """)
-        options_layout.addWidget(self.mode_combo, 2, 1)
-        
-        # Formato de salida
-        format_label = QLabel("Formato de salida:")
-        format_label.setStyleSheet("color: #FFFFFF;")
-        options_layout.addWidget(format_label, 2, 2)
-        
-        self.format_combo = QComboBox()
-        self.format_combo.addItems(["PNG", "JPG", "WEBP"])
-        self.format_combo.setStyleSheet("""
-            QComboBox {
-                background-color: #424242;
-                color: #FFFFFF;
-                border: 1px solid #555555;
-                padding: 5px;
-                border-radius: 5px;
-            }
-            QComboBox::drop-down {
-                border: none;
-            }
-            QComboBox::down-arrow {
-                image: none;
-                border-left: 5px solid #FFFFFF;
-                border-right: 5px solid transparent;
-                border-top: 5px solid #FFFFFF;
-            }
-        """)
-        self.format_combo.currentTextChanged.connect(self.toggle_quality_option)
-        options_layout.addWidget(self.format_combo, 2, 3)
-        
-        # Calidad (solo para JPG)
-        quality_label = QLabel("Calidad:")
-        quality_label.setStyleSheet("color: #FFFFFF;")
-        options_layout.addWidget(quality_label, 3, 0)
-        
-        self.quality_slider = QSlider(Qt.Orientation.Horizontal)
-        self.quality_slider.setRange(1, 100)
-        self.quality_slider.setValue(90)
-        self.quality_slider.setStyleSheet("""
-            QSlider::groove:horizontal {
-                border: 1px solid #565656;
-                height: 10px;
-                background: #2C2C2C;
-                margin: 0px;
-                border-radius: 5px;
-            }
-            QSlider::handle:horizontal {
-                background: #2196F3;
-                border: none;
-                width: 18px;
-                margin: -5px 0;
-                border-radius: 9px;
-            }
-        """)
-        options_layout.addWidget(self.quality_slider, 3, 1)
-        
-        self.quality_value = QLabel("90%")
-        self.quality_value.setStyleSheet("color: #FFFFFF;")
-        self.quality_slider.valueChanged.connect(lambda v: self.quality_value.setText(f"{v}%"))
-        options_layout.addWidget(self.quality_value, 3, 2)
-        
-        main_layout.addLayout(options_layout)
-        
-        # Barra de progreso
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setValue(0)
-        self.progress_bar.setStyleSheet("""
-            QProgressBar {
-                border: 2px solid #555555;
-                border-radius: 5px;
-                text-align: center;
-                background-color: #2C2C2C;
-                color: #FFFFFF;
-            }
-            QProgressBar::chunk {
-                background-color: #2196F3;
-                border-radius: 3px;
-            }
-        """)
-        main_layout.addWidget(self.progress_bar)
-        
-        # Botones de acción
-        button_layout = QHBoxLayout()
-        
-        self.start_button = QPushButton("Iniciar Procesamiento")
-        self.start_button.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
-                border: none;
-                padding: 10px;
-                border-radius: 5px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #388E3C;
-            }
-            QPushButton:disabled {
-                background-color: #777777;
-            }
-        """)
-        self.start_button.clicked.connect(self.start_processing)
-        button_layout.addWidget(self.start_button)
-        
-        self.cancel_button = QPushButton("Cancelar")
-        self.cancel_button.setStyleSheet("""
-            QPushButton {
-                background-color: #F44336;
-                color: white;
-                border: none;
-                padding: 10px;
-                border-radius: 5px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #D32F2F;
-            }
-            QPushButton:disabled {
-                background-color: #777777;
-            }
-        """)
-        self.cancel_button.clicked.connect(self.cancel_processing)
-        self.cancel_button.setEnabled(False)
-        button_layout.addWidget(self.cancel_button)
-        
-        main_layout.addLayout(button_layout)
-        
-        # Establecer el estilo general de la ventana
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #1E1E1E;
-            }
-        """)
-        
-        self.setLayout(main_layout)
-    
-    def toggle_dimension_fields(self):
-        """Habilita/deshabilita los campos de dimensiones según el estado del checkbox"""
-        enabled = not self.keep_dimensions_check.isChecked()
-        self.width_spin.setEnabled(enabled)
-        self.height_spin.setEnabled(enabled)
-        self.mode_combo.setEnabled(enabled)
-    
-    def toggle_quality_option(self, format_text):
-        """Habilita o deshabilita las opciones de calidad según el formato seleccionado"""
-        is_jpg = format_text == "JPG"
-        self.quality_slider.setEnabled(is_jpg)
-        self.quality_value.setEnabled(is_jpg)
-        if not is_jpg:
-            self.quality_value.setStyleSheet("color: #777777;")
-        else:
-            self.quality_value.setStyleSheet("color: #FFFFFF;")
-    
-    def select_input_dir(self):
-        """Selecciona el directorio de entrada"""
-        directory = QFileDialog.getExistingDirectory(self, "Seleccionar Directorio de Entrada")
-        if directory:
-            self.input_dir = directory
-            self.input_path_label.setText(directory)
-            # Buscar una imagen para la vista previa
-            self.load_preview_image()
-    
-    def select_output_dir(self):
-        """Selecciona el directorio de salida"""
-        directory = QFileDialog.getExistingDirectory(self, "Seleccionar Directorio de Salida")
-        if directory:
-            self.output_dir = directory
-            self.output_path_label.setText(directory)
-    
-    def load_preview_image(self):
-        """Carga una imagen para la vista previa"""
-        if not self.input_dir:
+        main = QHBoxLayout(self)
+        # Lado izquierdo: Producto y lista de imágenes
+        left = QVBoxLayout()
+        # Producto
+        g_prod = QGroupBox("Producto")
+        prod_layout = QHBoxLayout()
+        self.producto_combo = QComboBox()
+        self.producto_combo.currentIndexChanged.connect(self.cambiar_producto)
+        prod_layout.addWidget(self.producto_combo)
+        g_prod.setLayout(prod_layout)
+        left.addWidget(g_prod)
+
+        # Lista de imágenes con drag y visual principal
+        g_imgs = QGroupBox("Imágenes asociadas")
+        img_layout = QVBoxLayout()
+        self.lista_imagenes = QListWidget()
+        self.lista_imagenes.setIconSize(QSize(80, 80))
+        self.lista_imagenes.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
+        self.lista_imagenes.setDragDropMode(QListWidget.DragDropMode.InternalMove)
+        self.lista_imagenes.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.lista_imagenes.itemClicked.connect(self.mostrar_vista_previa)
+        img_layout.addWidget(self.lista_imagenes)
+        btns = QHBoxLayout()
+        self.btn_borrar = QPushButton("Eliminar")
+        self.btn_borrar.setToolTip("Eliminar imagen seleccionada")
+        self.btn_borrar.setFixedWidth(90)
+        self.btn_borrar.clicked.connect(self.eliminar_imagen_seleccionada)
+        btns.addWidget(self.btn_borrar)
+        self.btn_principal = QPushButton("Marcar principal")
+        self.btn_principal.setToolTip("Marcar imagen seleccionada como principal")
+        self.btn_principal.setFixedWidth(110)
+        self.btn_principal.clicked.connect(self.marcar_imagen_principal)
+        btns.addWidget(self.btn_principal)
+        img_layout.addLayout(btns)
+        g_imgs.setLayout(img_layout)
+        left.addWidget(g_imgs)
+
+        # Botón agregar imágenes
+        btns2 = QHBoxLayout()
+        btn_agregar = QPushButton("Agregar imágenes (+)")
+        btn_agregar.clicked.connect(self.abrir_archivos)
+        btns2.addWidget(btn_agregar)
+        left.addLayout(btns2)
+        main.addLayout(left,2)
+
+        # Lado derecho: Vista previa + opciones
+        right = QVBoxLayout()
+        # Vista previa
+        self.preview_label = QLabel("Arrastra imágenes aquí o usa el botón '+'.")
+        self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.preview_label.setMinimumSize(320, 240)
+        self.preview_label.setStyleSheet("background: #222; border: 2px dashed #2196F3; color: #aaa; margin-bottom:8px;")
+        right.addWidget(self.preview_label)
+
+        # Opciones
+        g_opts = QGroupBox("Opciones de guardado")
+        opts = QVBoxLayout()
+        # Resolución
+        res_layout = QHBoxLayout()
+        self.chk_original = QCheckBox("Mantener resolución original")
+        self.chk_original.toggled.connect(self.toggle_res_inputs)
+        res_layout.addWidget(self.chk_original)
+        res_layout.addWidget(QLabel("Ancho:"))
+        self.ancho_spin = QSpinBox()
+        self.ancho_spin.setRange(64, 5000)
+        self.ancho_spin.setValue(900)
+        res_layout.addWidget(self.ancho_spin)
+        res_layout.addWidget(QLabel("Alto:"))
+        self.alto_spin = QSpinBox()
+        self.alto_spin.setRange(64, 5000)
+        self.alto_spin.setValue(900)
+        res_layout.addWidget(self.alto_spin)
+        opts.addLayout(res_layout)
+        # Formato/calidad
+        fmt_layout = QHBoxLayout()
+        fmt_layout.addWidget(QLabel("Formato salida:"))
+        self.formato_combo = QComboBox()
+        self.formato_combo.addItems(["JPG", "PNG", "WEBP"])
+        self.formato_combo.currentTextChanged.connect(self.cambiar_formato_salida)
+        fmt_layout.addWidget(self.formato_combo)
+        fmt_layout.addWidget(QLabel("Calidad JPG/WEBP:"))
+        self.calidad_slider = QSlider(Qt.Orientation.Horizontal)
+        self.calidad_slider.setRange(10, 100)
+        self.calidad_slider.setValue(88)
+        self.calidad_slider.setFixedWidth(100)
+        fmt_layout.addWidget(self.calidad_slider)
+        opts.addLayout(fmt_layout)
+        g_opts.setLayout(opts)
+        right.addWidget(g_opts)
+
+        # Acciones
+        act = QHBoxLayout()
+        btn_guardar = QPushButton("Optimizar y Guardar")
+        btn_guardar.clicked.connect(self.optimizar_y_guardar)
+        act.addWidget(btn_guardar)
+        act.addStretch()
+        btn_root = QPushButton("Cambiar directorio imágenes")
+        btn_root.clicked.connect(self.cambiar_directorio_raiz)
+        act.addWidget(btn_root)
+        right.addLayout(act)
+
+        main.addLayout(right,3)
+
+    # DRAG & DROP
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+    def dropEvent(self, event: QDropEvent):
+        files = [u.toLocalFile() for u in event.mimeData().urls()]
+        self.cargar_imagenes(files)
+    def abrir_archivos(self):
+        files, _ = QFileDialog.getOpenFileNames(self, "Selecciona imágenes", "", "Imágenes (*.png *.jpg *.jpeg *.webp *.bmp *.gif)")
+        if files:
+            self.cargar_imagenes(files)
+    def cargar_imagenes(self, files):
+        for f in files:
+            if not os.path.isfile(f):
+                continue
+            ext = os.path.splitext(f)[1].lower()
+            if ext not in [".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif"]:
+                continue
+            if f not in self.imagenes:
+                self.imagenes.append(f)
+        self.actualizar_lista_imagenes()
+
+    def cargar_productos(self):
+        self.productos = []
+        if os.path.exists(PRODUCTOS_FILE):
+            with open(PRODUCTOS_FILE, "r", encoding="utf-8") as f:
+                self.productos = json.load(f)
+        self.producto_combo.clear()
+        for prod in self.productos:
+            sku = prod.get("sku", "")
+            nombre = prod.get("nombre", "")
+            marca = prod.get("marca", "")
+            diseno = prod.get("diseno", "")
+            texto = f"{sku} | {nombre} ({marca})"
+            if diseno:
+                texto += f" [{diseno}]"
+            self.producto_combo.addItem(texto, userData=sku)
+        if self.productos:
+            self.sku_seleccionado = self.productos[0].get("sku", "")
+            self.carpeta_actual = os.path.join(self.imagenes_raiz, self.sku_seleccionado)
+            ensure_dir(self.carpeta_actual)
+
+    def cambiar_producto(self, idx):
+        if idx < 0 or idx >= len(self.productos):
             return
-            
-        # Busca la primera imagen en el directorio
-        for root, _, files in os.walk(self.input_dir):
-            for file in files:
-                if file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.webp')):
-                    image_path = os.path.join(root, file)
-                    # Carga la imagen en la vista previa
-                    pixmap = QPixmap(image_path)
-                    if not pixmap.isNull():
-                        # Escala la imagen para que quepa en el área de vista previa
-                        scaled_pixmap = pixmap.scaled(
-                            self.preview_frame.width() - 40, 
-                            self.preview_frame.height() - 40,
-                            Qt.AspectRatioMode.KeepAspectRatio, 
-                            Qt.TransformationMode.SmoothTransformation
-                        )
-                        self.image_preview.setPixmap(scaled_pixmap)
-                        return
-    
-    def get_resize_mode(self):
-        """Convierte el texto del combobox al modo de reescalado para el worker"""
-        mode_text = self.mode_combo.currentText()
-        if mode_text == "Exacto":
-            return "exact"
-        elif mode_text == "Proporcional":
-            return "proporcional"
-        else:  # "Máximo"
-            return "max"
-    
-    def start_processing(self):
-        """Inicia el procesamiento de imágenes"""
-        if not self.input_dir or not self.output_dir:
-            QMessageBox.warning(self, "Advertencia", "Debes seleccionar los directorios de entrada y salida.")
+        self.sku_seleccionado = self.productos[idx].get("sku", "")
+        self.carpeta_actual = os.path.join(self.imagenes_raiz, self.sku_seleccionado)
+        ensure_dir(self.carpeta_actual)
+        self.imagenes = []
+        for f in os.listdir(self.carpeta_actual):
+            if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif')):
+                self.imagenes.append(os.path.join(self.carpeta_actual, f))
+        self.actualizar_lista_imagenes()
+
+    def actualizar_lista_imagenes(self):
+        self.lista_imagenes.clear()
+        for i, img_path in enumerate(self.imagenes):
+            try:
+                pixmap = QPixmap(img_path).scaled(80, 80, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                name = os.path.basename(img_path)
+                if i == 0:
+                    item = QListWidgetItem(QIcon(pixmap), f"★ {name} (principal)")
+                    item.setBackground(Qt.GlobalColor.yellow)
+                else:
+                    item = QListWidgetItem(QIcon(pixmap), name)
+                # Guarda la ruta real en el item para obtenerla en el orden visual luego
+                item.setData(Qt.ItemDataRole.UserRole, img_path)
+                self.lista_imagenes.addItem(item)
+            except Exception:
+                item = QListWidgetItem(os.path.basename(img_path))
+                item.setData(Qt.ItemDataRole.UserRole, img_path)
+                self.lista_imagenes.addItem(item)
+
+    def mostrar_vista_previa(self, item):
+        idx = self.lista_imagenes.row(item)
+        if idx < 0 or idx >= len(self.imagenes):
+            self.preview_label.setText("Vista previa no disponible")
             return
-        
-        # Crea y configura el trabajador
-        self.worker = WorkerThread(
-            input_dir=self.input_dir,
-            output_dir=self.output_dir,
-            width=0 if self.keep_dimensions_check.isChecked() else self.width_spin.value(),
-            height=0 if self.keep_dimensions_check.isChecked() else self.height_spin.value(),
-            mode=self.get_resize_mode(),
-            format=self.format_combo.currentText(),
-            quality=self.quality_slider.value()
-        )
-        
-        # Conecta las señales
-        self.worker.progress.connect(self.update_progress)
-        self.worker.finished.connect(self.processing_finished)
-        
-        # Actualiza la interfaz
-        self.start_button.setEnabled(False)
-        self.cancel_button.setEnabled(True)
-        self.progress_bar.setValue(0)
-        
-        # Inicia el trabajador
-        self.worker.start()
-    
-    def cancel_processing(self):
-        """Cancela el procesamiento de imágenes"""
-        if self.worker and self.worker.isRunning():
-            self.worker.stop()
-            self.worker.wait()
-            self.progress_bar.setValue(0)
-            self.start_button.setEnabled(True)
-            self.cancel_button.setEnabled(False)
-    
-    def update_progress(self, value):
-        """Actualiza la barra de progreso"""
-        self.progress_bar.setValue(value)
-    
-    def processing_finished(self, success):
-        """Maneja el fin del procesamiento"""
-        self.start_button.setEnabled(True)
-        self.cancel_button.setEnabled(False)
-        
-        if success:
-            QMessageBox.information(self, "Éxito", "Procesamiento de imágenes completado con éxito.")
-        else:
-            QMessageBox.warning(self, "Advertencia", "Ocurrió un error durante el procesamiento. Verifica los directorios y vuelve a intentar.")
+        img_path = item.data(Qt.ItemDataRole.UserRole)
+        pixmap = QPixmap(img_path).scaled(400, 400, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        self.preview_label.setPixmap(pixmap)
+
+    def eliminar_imagen_seleccionada(self):
+        idx = self.lista_imagenes.currentRow()
+        if idx < 0 or idx >= self.lista_imagenes.count():
+            return
+        item = self.lista_imagenes.item(idx)
+        img_path = item.data(Qt.ItemDataRole.UserRole)
+        # Elimina de self.imagenes también
+        if img_path in self.imagenes:
+            self.imagenes.remove(img_path)
+        if os.path.isfile(img_path):
+            try:
+                os.remove(img_path)
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"No se pudo eliminar la imagen: {e}")
+        self.actualizar_lista_imagenes()
+        if self.carpeta_actual and os.path.exists(self.carpeta_actual):
+            if not any(os.scandir(self.carpeta_actual)):
+                try:
+                    shutil.rmtree(self.carpeta_actual)
+                except Exception:
+                    pass
+
+    def marcar_imagen_principal(self):
+        idx = self.lista_imagenes.currentRow()
+        if idx < 0 or idx >= self.lista_imagenes.count():
+            return
+        # Reordena visualmente el QListWidget
+        item = self.lista_imagenes.takeItem(idx)
+        self.lista_imagenes.insertItem(0, item)
+        self.lista_imagenes.setCurrentRow(0)
+        # Opcional: reordena self.imagenes para mantener sincronía
+        img_path = item.data(Qt.ItemDataRole.UserRole)
+        if img_path in self.imagenes:
+            self.imagenes.remove(img_path)
+            self.imagenes.insert(0, img_path)
+        self.actualizar_lista_imagenes()
+
+    def cambiar_formato_salida(self, texto):
+        self.formato_salida = texto.upper()
+
+    def toggle_res_inputs(self, checked):
+        self.ancho_spin.setEnabled(not checked)
+        self.alto_spin.setEnabled(not checked)
+        self.guardar_original = checked
+
+    def optimizar_y_guardar(self):
+        if not self.sku_seleccionado or not self.carpeta_actual:
+            QMessageBox.warning(self, "Error", "Debes seleccionar un producto.")
+            return
+        ancho = self.ancho_spin.value()
+        alto = self.alto_spin.value()
+        calidad = self.calidad_slider.value()
+        formato = self.formato_salida.lower()
+        nuevas_imagenes = []
+        # Limpia carpeta destino antes de guardar (excepto metadatos)
+        for f in os.listdir(self.carpeta_actual):
+            if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif')):
+                try:
+                    os.remove(os.path.join(self.carpeta_actual, f))
+                except Exception:
+                    pass
+        # Usa el orden visual del QListWidget:
+        for i in range(self.lista_imagenes.count()):
+            item = self.lista_imagenes.item(i)
+            img_src = item.data(Qt.ItemDataRole.UserRole)
+            ext = "." + formato
+            if i == 0:
+                nombre_destino = f"{self.sku_seleccionado}_main{ext}"
+            else:
+                nombre_destino = f"{self.sku_seleccionado}_{i:02d}{ext}"
+            dest_path = os.path.join(self.carpeta_actual, nombre_destino)
+            try:
+                img = Image.open(img_src)
+                img = img.convert("RGB")
+                if not self.guardar_original:
+                    img = img.resize((ancho, alto), Image.Resampling.LANCZOS)
+                # Guardar en formato elegido
+                if formato in ["jpg", "jpeg"]:
+                    img.save(dest_path, quality=calidad)
+                elif formato == "webp":
+                    img.save(dest_path, quality=calidad, format="WEBP")
+                else:
+                    img.save(dest_path)
+                nuevas_imagenes.append(dest_path)
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"No se pudo procesar {img_src}: {e}")
+        # Sincroniza self.imagenes al nuevo orden y rutas
+        self.imagenes = nuevas_imagenes
+        self.guardar_metadatos(formato)
+        self.actualizar_lista_imagenes()
+        QMessageBox.information(self, "Listo", "Imágenes optimizadas y guardadas.")
+
+    def guardar_metadatos(self, formato):
+        if not self.carpeta_actual:
+            return
+        if not os.path.exists(self.carpeta_actual):
+            return
+        imgs = sorted([f for f in os.listdir(self.carpeta_actual) if f.lower().endswith(f'.{formato}')])
+        main_img = next((f for f in imgs if "_main" in f), imgs[0] if imgs else "")
+        meta = {
+            "imagenes": imgs,
+            "principal": main_img
+        }
+        with open(os.path.join(self.carpeta_actual, "imagenes.json"), "w", encoding="utf-8") as f:
+            json.dump(meta, f, ensure_ascii=False, indent=2)
+
+    def cambiar_directorio_raiz(self):
+        directory = QFileDialog.getExistingDirectory(self, "Seleccionar directorio raíz de imágenes")
+        if directory:
+            self.imagenes_raiz = directory
+            self.carpeta_actual = os.path.join(self.imagenes_raiz, self.sku_seleccionado)
+            self.guardar_ruta_raiz()
+            self.actualizar_lista_imagenes()
