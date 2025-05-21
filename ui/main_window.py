@@ -6,6 +6,7 @@ from modulos.sku import SkuWindow
 from modulos.reescalado import ReescaladoWindow
 from modulos.mockup_generator import MockupGeneratorWindow
 from modulos.qr_generator import QrGeneratorWindow
+from modulos.urls import UrlsWindow  # <-- asegúrate de que existe y está correcto
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -31,31 +32,32 @@ class MainWindow(QMainWindow):
         self.productos_widget = ProductosWindow()
         self.sku_widget = SkuWindow()
         self.reescalado_widget = ReescaladoWindow()
-        self.mockup_widget = MockupGeneratorWindow()
+        self.urls_widget = UrlsWindow()  # <--- NUEVO, urls en el orden correcto
         self.qr_widget = QrGeneratorWindow()
+        self.mockup_widget = MockupGeneratorWindow()  # <--- si quieres el mockup después, ponlo aquí
 
         # Agregar los paneles al stacked_widget en el ORDEN DEL FLUJO
         self.stacked_widget.addWidget(self.inicio_panel)        # index 0 - Panel de inicio
         self.stacked_widget.addWidget(self.productos_widget)    # index 1 - Datos de producto
-        self.stacked_widget.addWidget(self.sku_widget)     # index 2 - SKU y Códigos (cámbialo por tu panel SKU cuando lo tengas)
+        self.stacked_widget.addWidget(self.sku_widget)          # index 2 - SKU y Códigos
         self.stacked_widget.addWidget(self.reescalado_widget)   # index 3 - Imágenes
-        self.stacked_widget.addWidget(self.mockup_widget)       # index 4 - URLs (cámbialo por tu panel URLs cuando lo tengas)
-        self.stacked_widget.addWidget(self.qr_widget)           # index 5 - Publicar/Exportar (cámbialo por tu panel Publicar cuando lo tengas)
+        self.stacked_widget.addWidget(self.urls_widget)         # index 4 - URLs
+        self.stacked_widget.addWidget(self.qr_widget)           # index 5 - Publicar/Exportar
+        # Si deseas el mockup generator como panel extra, agrégalo después:
+        # self.stacked_widget.addWidget(self.mockup_widget)     # index 6 - Mockup Generator
 
         # --- CONEXIONES DE NAVEGACIÓN ---
-        # Panel de inicio: refresca estadísticas cada vez que se muestra
         self.navigation_panel.inicio_clicked.connect(self.ir_a_inicio)
-        # Resto de navegación
         self.navigation_panel.productos_clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))
         self.navigation_panel.sku_clicked.connect(lambda: self.stacked_widget.setCurrentIndex(2))
         self.navigation_panel.imagenes_clicked.connect(lambda: self.stacked_widget.setCurrentIndex(3))
         self.navigation_panel.urls_clicked.connect(lambda: self.stacked_widget.setCurrentIndex(4))
         self.navigation_panel.publicar_clicked.connect(lambda: self.stacked_widget.setCurrentIndex(5))
+        # Si agregas el mockup generator como panel, crea un botón y conecta a index 6
 
         # Flujo guiado: botón "nuevo producto" en panel de inicio lleva a Datos de producto
         self.inicio_panel.nuevo_producto_clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))
 
     def ir_a_inicio(self):
-        # Este método asegura que el panel de inicio siempre muestre estadísticas actualizadas
         self.inicio_panel.actualizar_estadisticas()
         self.stacked_widget.setCurrentIndex(0)

@@ -73,5 +73,20 @@
     "subcategoria": "Taza Blanca",
     "descripcion_corta": "123",
     "descripcion_larga": "123456"
+  },
+  {
+    "id": "3fb04af5-d0a3-43df-aa02-516ad38824d3",
+    "sku": "02M-02P-01T-01C-08S-04F-SIM",
+    "nombre": "Taza",
+    "marca": "SkillHub",
+    "tecnica": "Sublimación",
+    "tamano": "11 oz",
+    "color": "Blanco",
+    "forma": "Normal",
+    "diseno": "simpson-01",
+    "categoria": "Tazas",
+    "subcategoria": "Taza Blanca",
+    "descripcion_corta": "123456",
+    "descripcion_larga": "123456789"
   }
 ]
