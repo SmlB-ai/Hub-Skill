@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton
 from PyQt6.QtCore import pyqtSignal
 
-class NavigationPanel(QWidget):
+class MainWindow(QWidget):
     """Panel de navegación interactivo"""
     
     # Señales para cada botón
