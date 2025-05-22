@@ -9,13 +9,13 @@ class NavigationPanel(QWidget):
     urls_clicked = pyqtSignal()
     publicar_clicked = pyqtSignal()
     medidas_clicked = pyqtSignal()
-    precios_clicked = pyqtSignal()  # <--- NUEVA señal para precios
+    precios_clicked = pyqtSignal()
+    descripcion_clicked = pyqtSignal()  # <--- NEW: Señal para Descripción/Contenido
 
     def __init__(self, parent=None):
         super().__init__(parent)
         layout = QVBoxLayout(self)
 
-        # Botones en el orden del flujo de trabajo
         btns = [
             ("🏠 Inicio", self.inicio_clicked),
             ("📦 Datos de producto", self.productos_clicked),
@@ -23,7 +23,8 @@ class NavigationPanel(QWidget):
             ("🖼️ Imágenes", self.imagenes_clicked),
             ("🔗 URLs", self.urls_clicked),
             ("📏 Medidas de productos", self.medidas_clicked),
-            ("💲 Precios y Dinero", self.precios_clicked),  # <--- NUEVO BOTÓN
+            ("💲 Precios y Dinero", self.precios_clicked),
+            ("📝 Descripción/Contenido", self.descripcion_clicked),  # <--- NUEVO BOTÓN
             ("🔳 Generador QR", self.publicar_clicked),
         ]
         for text, signal in btns:
