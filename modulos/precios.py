@@ -2,15 +2,29 @@ import os
 import json
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox,
-    QFormLayout, QDoubleSpinBox, QMessageBox, QCheckBox, QSizePolicy, QFrame
+    QFormLayout, QDoubleSpinBox, QMessageBox, QCheckBox, QSizePolicy, QFrame,
+    QColorDialog, QDialog, QDialogButtonBox, QGridLayout
 )
 from PyQt6.QtGui import QPixmap
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSize
 
 DATA_DIR = "datos"
 PRODUCTOS_FILE = os.path.join(DATA_DIR, "productos.json")
 PRECIOS_FILE = os.path.join(DATA_DIR, "precios.json")
+COLORES_FILE = os.path.join(DATA_DIR, "precios_colores.json")
 IMAGES_ROOT = os.path.abspath("imagenes_productos")
+
+# --- COLORES POR DEFECTO ---
+DEFAULT_DESGLOSE_COLORS = {
+    "subtotal": "#464646",
+    "descuento": "#ff6f91",
+    "subtotal_desc": "#5adbb5",
+    "iva": "#6c8cff",
+    "total_iva": "#ffc93c",
+    "envio": "#ffa07a",
+    "otros": "#b388ff",
+    "final": "#1976d2"
+}
 
 def ensure_data_dir():
     if not os.path.exists(DATA_DIR):
@@ -44,6 +58,66 @@ def obtener_imagen_principal(sku):
     imgfile = main[0] if main else files[0]
     return os.path.join(carpeta, imgfile)
 
+def cargar_colores_desglose():
+    if os.path.exists(COLORES_FILE):
+        with open(COLORES_FILE, "r", encoding="utf-8") as f:
+            try:
+                colores = json.load(f)
+                return {**DEFAULT_DESGLOSE_COLORS, **colores}
+            except Exception:
+                return DEFAULT_DESGLOSE_COLORS.copy()
+    return DEFAULT_DESGLOSE_COLORS.copy()
+
+def guardar_colores_desglose(colores):
+    with open(COLORES_FILE, "w", encoding="utf-8") as f:
+        json.dump(colores, f, ensure_ascii=False, indent=2)
+
+class DesgloseColorDialog(QDialog):
+    def __init__(self, colores_actuales, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Configurar colores de desglose")
+        self.setModal(True)
+        self.setMinimumWidth(370)
+        self.colores = colores_actuales.copy()
+        layout = QVBoxLayout(self)
+        grid = QGridLayout()
+        self.campos = {}
+        labels = [
+            ("subtotal", "Subtotal"),
+            ("descuento", "Descuento"),
+            ("subtotal_desc", "Subtotal con descuento"),
+            ("iva", "IVA"),
+            ("total_iva", "Total c/IVA"),
+            ("envio", "Envío"),
+            ("otros", "Otros"),
+            ("final", "Precio final")
+        ]
+        for i, (key, label) in enumerate(labels):
+            lbl = QLabel(label)
+            btn = QPushButton()
+            btn.setFixedSize(28, 28)
+            btn.setStyleSheet(f"background:{self.colores[key]};border-radius:14px;")
+            btn.clicked.connect(lambda _, k=key: self.cambiar_color(k))
+            grid.addWidget(lbl, i, 0)
+            grid.addWidget(btn, i, 1)
+            self.campos[key] = btn
+        layout.addLayout(grid)
+        layout.addSpacing(8)
+        self.btn_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        self.btn_box.accepted.connect(self.accept)
+        self.btn_box.rejected.connect(self.reject)
+        layout.addWidget(self.btn_box)
+
+    def cambiar_color(self, key):
+        color = QColorDialog.getColor()
+        if color.isValid():
+            hexcolor = color.name()
+            self.campos[key].setStyleSheet(f"background:{hexcolor};border-radius:14px;")
+            self.colores[key] = hexcolor
+
+    def get_colores(self):
+        return self.colores
+
 class PreciosWindow(QWidget):
     def __init__(self):
         super().__init__()
@@ -52,6 +126,7 @@ class PreciosWindow(QWidget):
         ensure_data_dir()
         self.productos = cargar_productos()
         self.precios = cargar_precios()
+        self.colores_desglose = cargar_colores_desglose()
         self.init_ui()
         self.cargar_productos()
 
@@ -60,7 +135,7 @@ class PreciosWindow(QWidget):
         main.setContentsMargins(10, 10, 10, 10)
         main.setSpacing(5)
 
-        # Barra superior: selector producto y refrescar
+        # Barra superior: selector producto, refrescar y botón "Cambiar colores"
         barra = QHBoxLayout()
         lbl_prod = QLabel("Producto:")
         lbl_prod.setStyleSheet("font-weight:bold;")
@@ -76,6 +151,26 @@ class PreciosWindow(QWidget):
         self.btn_refresh.setToolTip("Refrescar productos y precios")
         self.btn_refresh.clicked.connect(self.refrescar_todo)
         barra.addWidget(self.btn_refresh)
+        # Botón configurador de colores
+        self.btn_config_colores = QPushButton("Cambiar colores")
+        self.btn_config_colores.setFixedHeight(28)
+        self.btn_config_colores.setStyleSheet("""
+            QPushButton {
+                background: #f8f8f8;
+                color: #333;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 3px 13px;
+                font-size: 10.5pt;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background: #e0e0e0;
+            }
+        """)
+        self.btn_config_colores.setToolTip("Configurar colores del desglose de precios")
+        self.btn_config_colores.clicked.connect(self.abrir_config_colores)
+        barra.addWidget(self.btn_config_colores)
         main.addLayout(barra)
 
         # Línea separadora fina
@@ -203,6 +298,13 @@ class PreciosWindow(QWidget):
         self.envio_checkbox.stateChanged.connect(self.actualizar_desglose)
         self.otros_checkbox.stateChanged.connect(self.actualizar_desglose)
 
+    def abrir_config_colores(self):
+        dlg = DesgloseColorDialog(self.colores_desglose, self)
+        if dlg.exec():
+            self.colores_desglose = dlg.get_colores()
+            guardar_colores_desglose(self.colores_desglose)
+            self.actualizar_desglose()
+
     def refrescar_todo(self):
         self.productos = cargar_productos()
         self.precios = cargar_precios()
@@ -305,6 +407,7 @@ class PreciosWindow(QWidget):
         self.actualizar_desglose()
 
     def actualizar_desglose(self):
+        c = self.colores_desglose
         precio_base = self.precio_base_spin.value()
         descuento = self.descuento_spin.value()
         iva = self.iva_spin.value()
@@ -322,26 +425,26 @@ class PreciosWindow(QWidget):
         monto_otros = otros if sumar_otros else 0
         precio_final = precio_iva + monto_envio + monto_otros
 
-        # Desglose tipo factura
-        desglose = f"""<span style='color:#464646;'>
+        # Desglose tipo factura con colores personalizados
+        desglose = f"""<span style='color:{c["subtotal"]};'>
         <b>Subtotal:</b> ${precio_base:,.2f}<br>
-        <span style='color:#ff6f91;'>- Descuento:</span> ${monto_desc:,.2f} <span style="font-size:10pt;">({descuento:.2f}%)</span><br>
-        <span style='color:#5adbb5;'>= Subtotal con desc.:</span> ${precio_desc:,.2f}<br>
-        <span style='color:#6c8cff;'>+ IVA:</span> ${monto_iva:,.2f} <span style="font-size:10pt;">({iva:.2f}%)</span><br>
-        <span style='color:#ffc93c;'>= Total c/IVA:</span> ${precio_iva:,.2f}<br>"""
+        <span style='color:{c["descuento"]};'>- Descuento:</span> ${monto_desc:,.2f} <span style="font-size:10pt;">({descuento:.2f}%)</span><br>
+        <span style='color:{c["subtotal_desc"]};'>= Subtotal con desc.:</span> ${precio_desc:,.2f}<br>
+        <span style='color:{c["iva"]};'>+ IVA:</span> ${monto_iva:,.2f} <span style="font-size:10pt;">({iva:.2f}%)</span><br>
+        <span style='color:{c["total_iva"]};'>= Total c/IVA:</span> ${precio_iva:,.2f}<br>"""
         if sumar_envio:
-            desglose += f"<span style='color:#ffa07a;'>+ Envío:</span> ${envio:,.2f}<br>"
+            desglose += f"<span style='color:{c['envio']};'>+ Envío:</span> ${envio:,.2f}<br>"
         else:
-            desglose += f"<span style='color:#ffa07a;'>Envío (no sumado):</span> ${envio:,.2f}<br>"
+            desglose += f"<span style='color:{c['envio']};'>Envío (no sumado):</span> ${envio:,.2f}<br>"
         if sumar_otros:
-            desglose += f"<span style='color:#b388ff;'>+ Otros:</span> ${otros:,.2f}<br>"
+            desglose += f"<span style='color:{c['otros']};'>+ Otros:</span> ${otros:,.2f}<br>"
         else:
-            desglose += f"<span style='color:#b388ff;'>Otros (no sumado):</span> ${otros:,.2f}<br>"
+            desglose += f"<span style='color:{c['otros']};'>Otros (no sumado):</span> ${otros:,.2f}<br>"
         desglose += "</span>"
         self.desglose_label.setText(desglose)
 
         self.precio_final_label.setText(
-            f"Precio final:  <span style='color:#1976d2'><b>${precio_final:,.2f}</b></span>"
+            f"Precio final:  <span style='color:{c['final']}'><b>${precio_final:,.2f}</b></span>"
         )
 
     def guardar_precio_producto(self):

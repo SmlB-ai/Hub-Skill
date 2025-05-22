@@ -1,6 +1,7 @@
-from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QStackedWidget
+from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QStackedWidget
 from ui.components.navigation_panel import NavigationPanel
 from ui.components.inicio_panel import InicioPanel
+from ui.components.logo_panel import LogoPanel    # <--- AGREGA ESTA LÍNEA
 from modulos.productos import ProductosWindow
 from modulos.sku import SkuWindow
 from modulos.reescalado import ReescaladoWindow
@@ -21,9 +22,19 @@ class MainWindow(QMainWindow):
         main_layout = QHBoxLayout(central_widget)
         self.setCentralWidget(central_widget)
 
-        # Barra de navegación
+        # --- LADO IZQUIERDO: logo y navegación como columna ---
+        left_layout = QVBoxLayout()
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(0)
+
+        # LogoPanel arriba de NavigationPanel
+        self.logo_panel = LogoPanel()
+        left_layout.addWidget(self.logo_panel)
         self.navigation_panel = NavigationPanel()
-        main_layout.addWidget(self.navigation_panel)
+        left_layout.addWidget(self.navigation_panel)
+        left_layout.addStretch()
+        # Agregar al layout principal
+        main_layout.addLayout(left_layout)
 
         # Área central apilada
         self.stacked_widget = QStackedWidget()
