@@ -6,7 +6,8 @@ from modulos.sku import SkuWindow
 from modulos.reescalado import ReescaladoWindow
 from modulos.mockup_generator import MockupGeneratorWindow
 from modulos.qr_generator import QrGeneratorWindow
-from modulos.urls import UrlsWindow  # <-- asegúrate de que existe y está correcto
+from modulos.urls import UrlsWindow
+from modulos.medidas import MedidasWindow
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -32,9 +33,10 @@ class MainWindow(QMainWindow):
         self.productos_widget = ProductosWindow()
         self.sku_widget = SkuWindow()
         self.reescalado_widget = ReescaladoWindow()
-        self.urls_widget = UrlsWindow()  # <--- NUEVO, urls en el orden correcto
+        self.urls_widget = UrlsWindow()
         self.qr_widget = QrGeneratorWindow()
-        self.mockup_widget = MockupGeneratorWindow()  # <--- si quieres el mockup después, ponlo aquí
+        self.mockup_widget = MockupGeneratorWindow()
+        self.medidas_widget = MedidasWindow()
 
         # Agregar los paneles al stacked_widget en el ORDEN DEL FLUJO
         self.stacked_widget.addWidget(self.inicio_panel)        # index 0 - Panel de inicio
@@ -43,8 +45,8 @@ class MainWindow(QMainWindow):
         self.stacked_widget.addWidget(self.reescalado_widget)   # index 3 - Imágenes
         self.stacked_widget.addWidget(self.urls_widget)         # index 4 - URLs
         self.stacked_widget.addWidget(self.qr_widget)           # index 5 - Publicar/Exportar
-        # Si deseas el mockup generator como panel extra, agrégalo después:
-        # self.stacked_widget.addWidget(self.mockup_widget)     # index 6 - Mockup Generator
+        self.stacked_widget.addWidget(self.mockup_widget)       # index 6 - Mockup Generator
+        self.stacked_widget.addWidget(self.medidas_widget)      # index 7 - Medidas de Producto
 
         # --- CONEXIONES DE NAVEGACIÓN ---
         self.navigation_panel.inicio_clicked.connect(self.ir_a_inicio)
@@ -53,7 +55,7 @@ class MainWindow(QMainWindow):
         self.navigation_panel.imagenes_clicked.connect(lambda: self.stacked_widget.setCurrentIndex(3))
         self.navigation_panel.urls_clicked.connect(lambda: self.stacked_widget.setCurrentIndex(4))
         self.navigation_panel.publicar_clicked.connect(lambda: self.stacked_widget.setCurrentIndex(5))
-        # Si agregas el mockup generator como panel, crea un botón y conecta a index 6
+        self.navigation_panel.medidas_clicked.connect(lambda: self.stacked_widget.setCurrentIndex(7))
 
         # Flujo guiado: botón "nuevo producto" en panel de inicio lleva a Datos de producto
         self.inicio_panel.nuevo_producto_clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))

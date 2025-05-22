@@ -21,6 +21,22 @@ def ensure_data_dir():
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
 
+# NUEVO: función utilizable por otros módulos para obtener productos (para QR, etc.)
+def obtener_productos():
+    """Devuelve una lista de productos con id, nombre y url (si aplica)."""
+    if not os.path.exists(PRODUCTOS_FILE):
+        return []
+    try:
+        with open(PRODUCTOS_FILE, "r", encoding="utf-8") as f:
+            productos = json.load(f)
+            # Puedes personalizar la url según tu lógica, aquí un ejemplo
+            for p in productos:
+                if "id" in p:
+                    p["url"] = f"https://tuapp.com/producto/{p['id']}"
+            return productos
+    except Exception:
+        return []
+
 class ProductosWindow(QWidget):
     def __init__(self):
         super().__init__()

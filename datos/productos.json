@@ -88,5 +88,20 @@
     "subcategoria": "Taza Blanca",
     "descripcion_corta": "123456",
     "descripcion_larga": "123456789"
+  },
+  {
+    "id": "08e39081-d43e-4fbb-8769-4ab3763b4caf",
+    "sku": "",
+    "nombre": "Playera",
+    "marca": "Sin marca",
+    "tecnica": "Sublimación",
+    "tamano": "Chico",
+    "color": "Blanco",
+    "forma": "Redondo",
+    "diseno": "",
+    "categoria": "Sin categoría",
+    "subcategoria": "",
+    "descripcion_corta": "",
+    "descripcion_larga": ""
   }
 ]

@@ -42,6 +42,12 @@ class UrlsWindow(QWidget):
         self.producto_combo = QComboBox()
         self.producto_combo.currentIndexChanged.connect(self.cambiar_producto)
         prod_layout.addWidget(self.producto_combo)
+        # --- BOTÓN REFRESCAR PRODUCTOS ---
+        self.btn_refresh_productos = QPushButton("Refrescar productos")
+        self.btn_refresh_productos.setToolTip("Volver a cargar la lista de productos")
+        self.btn_refresh_productos.clicked.connect(self.cargar_productos)
+        prod_layout.addWidget(self.btn_refresh_productos)
+        # ----------------------------------
         layout.addLayout(prod_layout)
 
         # Área de URLs generadas
@@ -61,6 +67,7 @@ class UrlsWindow(QWidget):
         if os.path.exists(PRODUCTOS_FILE):
             with open(PRODUCTOS_FILE, "r", encoding="utf-8") as f:
                 self.productos = json.load(f)
+        self.producto_combo.blockSignals(True)
         self.producto_combo.clear()
         for prod in self.productos:
             sku = prod.get("sku", "")
@@ -71,9 +78,15 @@ class UrlsWindow(QWidget):
             if diseno:
                 texto += f" [{diseno}]"
             self.producto_combo.addItem(texto, userData=sku)
+        self.producto_combo.blockSignals(False)
         if self.productos:
             self.sku_seleccionado = self.productos[0].get("sku", "")
             self.carpeta_actual = os.path.join(self.imagenes_raiz, self.sku_seleccionado)
+            self.producto_combo.setCurrentIndex(0)
+        else:
+            self.sku_seleccionado = ""
+            self.carpeta_actual = ""
+        self.actualizar_urls()
 
     def cambiar_producto(self, idx):
         if idx < 0 or idx >= len(self.productos):

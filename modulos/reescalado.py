@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QPixmap, QIcon, QDragEnterEvent, QDropEvent
 from PyQt6.QtCore import Qt, QSize
 from PIL import Image
+from PyQt6.QtCore import pyqtSignal
 
 DATA_DIR = "datos"
 PRODUCTOS_FILE = os.path.join(DATA_DIR, "productos.json")
@@ -58,6 +59,12 @@ class ReescaladoWindow(QWidget):
         self.producto_combo = QComboBox()
         self.producto_combo.currentIndexChanged.connect(self.cambiar_producto)
         prod_layout.addWidget(self.producto_combo)
+        # --- BOTÓN REFRESCAR PRODUCTOS ---
+        self.btn_refresh_productos = QPushButton("Refrescar productos")
+        self.btn_refresh_productos.setToolTip("Volver a cargar la lista de productos")
+        self.btn_refresh_productos.clicked.connect(self.cargar_productos)
+        prod_layout.addWidget(self.btn_refresh_productos)
+        # ---------------------------------
         g_prod.setLayout(prod_layout)
         left.addWidget(g_prod)
 
