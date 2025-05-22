@@ -1,0 +1,23 @@
+{
+  "global": {
+    "iva": 16,
+    "envio": 0,
+    "descuento": 0,
+    "precio_base": 0,
+    "sumar_envio": false,
+    "otros": 0,
+    "sumar_otros": true
+  },
+  "categorias": {
+    "Tazas": {
+      "precio_base": 167.0,
+      "descuento": 10.0,
+      "iva": 16.0,
+      "envio": 190.0,
+      "sumar_envio": false,
+      "otros": 0.0,
+      "sumar_otros": false
+    }
+  },
+  "productos": {}
+}

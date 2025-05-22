@@ -8,7 +8,8 @@ class NavigationPanel(QWidget):
     imagenes_clicked = pyqtSignal()
     urls_clicked = pyqtSignal()
     publicar_clicked = pyqtSignal()
-    medidas_clicked = pyqtSignal()  # <--- NUEVO: señal para medidas
+    medidas_clicked = pyqtSignal()
+    precios_clicked = pyqtSignal()  # <--- NUEVA señal para precios
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -21,7 +22,8 @@ class NavigationPanel(QWidget):
             ("🔖 SKU y Códigos", self.sku_clicked),
             ("🖼️ Imágenes", self.imagenes_clicked),
             ("🔗 URLs", self.urls_clicked),
-            ("📏 Medidas de productos", self.medidas_clicked),  # <--- NUEVO BOTÓN
+            ("📏 Medidas de productos", self.medidas_clicked),
+            ("💲 Precios y Dinero", self.precios_clicked),  # <--- NUEVO BOTÓN
             ("🔳 Generador QR", self.publicar_clicked),
         ]
         for text, signal in btns:
